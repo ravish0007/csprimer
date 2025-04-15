@@ -1,0 +1,172 @@
+#+BEGIN_SRC clojure
+  
+  ;; AUTHOR Aditya Athalye, https://www.evalapply.org
+
+
+  ;; Direct tanslation of Luhn's algorithm as found at the Wikipedia page
+  ;; ref. https://en.wikipedia.org/wiki/Luhn_algorithm#Example_for_validating_check_digit
+
+  ;; STEP 1: MANUAL TRANSLATION OF EXAMPLE into DOMAIN DATA REPRESENTATION
+
+  ;; "17893729974"
+  ;;   -> 1789372997 "payload" and 4 "check digit"
+  ;;   -> [1 7 8 9 3 7 2 9 9 7] "payload" and 4 "check digit"
+
+  ;; This is what we mean by "It's just Data".
+
+
+  ;; STEP 2: TRANSLATE LUHN MATH FORMULAS TO CLOJURE
+  ;; We need to reverse the payload, for the modulo math
+  ;;   -> [1 7 8 9 3 7 2 9 9 7] "payload" and 4 "check digit"
+  ;;   -> [7 9 9 2 7 3 9 8 7 1] "payload" and 4 "check digit"
+
+  (defn luhn-digit-modulo
+    [digit multiplier]
+    (let [digit (* digit multiplier)
+          n-mod (mod digit 9)]
+      (if (zero? n-mod)
+        9
+        n-mod)))
+
+  (comment
+    (map luhn-digit-modulo
+         [7 9 9 2 7 3 9 8 7 1] ; Reversed payload
+         [2 1 2 1 2 1 2 1 2 1] ; Modulo multiplier digits as per formula
+         )
+    ;; => (5 9 9 2 5 3 9 8 5 1)
+    )
+
+  (defn luhn-check-digit
+    [n]
+    (mod (- 10 (mod n 10))
+         10))
+
+  (comment
+    (let [luhn-mod-digits (map luhn-digit-modulo
+                               [7 9 9 2 7 3 9 8 7 1]
+                               [2 1 2 1 2 1 2 1 2 1])]
+
+      (apply + luhn-mod-digits))
+    ;; => 56
+    ;; consistent with the example
+
+    (luhn-check-digit 56)
+    ;; => 4
+    ;; i.e. we get our original check digit back
+    )
+
+
+  ;; STEP 3: ASSEMBLE FORMULAS INTO CC NUMBER VALIDATOR
+  ;; - ASSUMING we _somehow_ already have a sequence of digits
+  ;;   representing the CC number.
+  ;; - Forget about parsing. That is not essential to the job
+  ;;   of calculating our numbers.
+
+  (defn valid-cc?
+    [cc-digits]
+    (let [cc-digits-rev (reverse cc-digits)
+          check-digit (first cc-digits-rev)
+          payload (rest cc-digits-rev)
+          luhn-mod-digits (map luhn-digit-modulo
+                               payload
+                               (cycle [2 1]))
+          checksum (luhn-check-digit
+                    (apply + luhn-mod-digits))]
+      (= check-digit
+         checksum)))
+
+  (comment
+    ;; "17893729974"
+    ;; -> [1 7 8 9 3 7 2 9 9 7 4]
+
+    (valid-cc? [1 7 8 9 3 7 2 9 9 7 4])
+    ;; => true
+    )
+
+
+  ;; STEP 4: WRITE PARSER
+  ;; - Let the parser be as dumb and mechanical as possible.
+  ;; - Make it return the sequence of digits expected in our validator.
+
+(defn parse-cc
+  [cc-string]
+  (map (fn [c] (Character/digit c 10))
+       cc-string))
+
+  (comment
+    (parse-cc "17893729974")
+    ;; => (1 7 8 9 3 7 2 9 9 7 4)
+    )
+
+  ;; FINALLY: END-To-END solution
+
+  (comment
+    (true? (-> "17893729974"
+               parse-cc
+               valid-cc?))
+    ;; => true
+
+    (false? (-> "27893729974"
+                parse-cc
+                valid-cc?))
+    ;; => true
+    )
+
+
+  ;;======================================= more suggestions
+  
+  (def modulo-9s
+    {0 0
+    1 1
+    2 2
+    3 3
+    4 4
+    5 5
+    6 6
+    7 7
+    8 8
+    9 9
+    10 1
+    12 3 
+    14 5
+    16 7
+    18 9})
+
+  (defn luhn-digit-modulo-v2
+    [digit multiplier]
+    (modulo-9s (* digit multiplier)))
+
+  ;; instead of doing modulo math all the time as we did in luhn-digit-modulo
+
+  ;;nb. We can use the same trick for the other modulo math, because we can guarantee that the sum of digits will never exceed (* 9 n) where n is the maximum number of digits of a CC number for any credit card ever issued, or which will ever be issued in the future.
+  ;;So we can simply zipmap luhn-check-digit over (range (inc (* 9 n)))  to generate the lookup table. Thus converting the luhn-check-digit modulo math
+
+  ;; If we choose this trick, then we can simply wrap the existing valid-cc? in a let binding that executes at compile time.
+  ;; The little joys of "data-as-functions" + referential transparency... like so (I haven't tested whether the math checks out, but the tactic is sound).
+
+  (let [upto-20-digit-cards (range (inc (* 9 20)))
+        luhn-check-digit (zipmap upto-20-digit-cards
+                                (map luhn-check-digit
+                                      upto-20-digit-cards))]
+  (defn valid-cc?
+    [cc-digits]
+    (let [cc-digits-rev (reverse cc-digits)
+          check-digit (first cc-digits-rev)
+          payload (rest cc-digits-rev)
+          luhn-mod-digits (map luhn-digit-modulo
+                               payload
+                               (cycle [2 1]))
+          checksum (luhn-check-digit
+                    (apply + luhn-mod-digits))]
+      (= check-digit
+         checksum))))
+
+;; And lastly, I don't know the domain of credit cards, but with that knowledge, it might be possible to keep walking this path of "Let's represent more of credit card arithmetic as "just data"", because it can deliver us an elegant and fast and correct-by-construction calculator. (e.g. represent a valid-cc? as a bloom filter, because it can guarantee that a digit sequence is not a valid cc.)
+;; Of course, such a thing will be useful only for a bulk job having to luhn-check lots of CC numbers really fast.
+;; In a browser context, it will always be cheaper to ship down a few bytes worth of functions compared to a definitely much larger look-up table :)
+ 
+#+END_SRC
+
+
+
+

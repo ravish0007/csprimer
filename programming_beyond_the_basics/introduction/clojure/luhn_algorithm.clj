@@ -1,16 +1,33 @@
+(def mod-9s {0 0, 1 1, 2 2, 3 3, 4 4, 5 5, 6 6, 7 7, 8 8, 9 9, 10 1, 12 3, 14 5, 16 7, 18 9 })
 
-(def cache
-  {0 {\0 0, \1 1, \2 2, \3 3, \4 4, \5 5, \6 6, \7 7, \8 8, \9 9}
-   1 {\0 0, \1 2, \2 4, \3 6, \4 8, \5 1, \6 3, \7 5, \8 7, \9 9}})
+(defn lookup-luhn-mod [multiplier digit]
+  (mod-9s (* multiplier digit)))
 
-(defn lookup [index-digit-vec]
-  (let [index (first index-digit-vec)
-        digit (last index-digit-vec)]
-    (get (get cache (mod index 2)) digit)))
 
-(defn verify [digits]
-  (let [sum (reduce  + (doall (map lookup (map-indexed vector (reverse digits)))))]
-    (= (mod sum 10) 0)))
+;; type hinting makes much faster
+(defn parse-cc [^String cc-string]
+  (map #(Character/digit ^Character % 10) cc-string))
 
-(println (verify "17893729975"))
-(println (verify "17893729974"))
+(defn debug [x]
+  (println x) 
+  x
+  )
+
+(defn verify-cc? [digits]
+  (->>  digits
+        (reverse)
+        (map lookup-luhn-mod (cycle [1 2])) 
+        (reduce +)
+        ( #(mod % 10 ))
+        (zero?)
+    ))
+(defn parse-n-verify-cc? [cc-string]
+  (-> cc-string
+      parse-cc
+      verify-cc?))
+
+(println (parse-n-verify-cc? "17893729975"))
+(println (parse-n-verify-cc? "17893729974"))
+
+
+

@@ -6,7 +6,7 @@ def verify(digits):
     return sum(map(conditional_double_and_sum, enumerate(digits))) % 10 == 0
 
 
-if __name__ == '__main__':
+if __name__ == '__main__'
     import os
     os.system('clear')
     print('------------')
