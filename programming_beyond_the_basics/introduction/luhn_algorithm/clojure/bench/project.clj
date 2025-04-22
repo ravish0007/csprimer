@@ -7,4 +7,5 @@
                  [criterium "0.4.6"]
                  ]
   :main bench.core
+:plugins [[cider/cider-nrepl "0.42.1"]]
   :repl-options {:init-ns bench.core})

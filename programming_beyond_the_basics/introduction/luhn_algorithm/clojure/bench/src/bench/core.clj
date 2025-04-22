@@ -14,6 +14,9 @@
 (defn parse-cc [cc-string]
   (map #(Character/digit  % 10) cc-string))
 
+(defn parse-cc-with-int [cc-string]
+  (mapv #(- (int %) 48) cc-string))
+
 (defn verify-cc? [digits]
   (->>  digits
         (reverse)
@@ -32,6 +35,11 @@
       parse-cc-type-hinted?
       verify-cc?))
 
+(defn parse-n-verify-cc-int-method? [cc-string]
+  (-> cc-string
+      parse-cc-with-int
+      verify-cc?))
+
 ; util to measure one call.
 (defn bench [f-sym input-str]
   (let [fmt #(let [[factor unit] (crit/scale-time %)]
@@ -43,13 +51,31 @@
      :mean (fmt mean)
      :std-dev (fmt (Math/sqrt variance))}))
 
+(defn control [sum]
+  (mod (- 10 (mod sum 10)) 10))
+
+(defn digit-value-2 [i d]
+  (cond
+    (odd? i) d
+    (> d 4) (- (* 2 d) 9)
+    :else (* 2 d)))
+
+(defn checksum-2 [digits]
+  (transduce (map-indexed digit-value-2) + digits))
+
+(defn verify-2 [digits]
+  (let [[hd & tl] (mapv #(- (int %) 48) (reverse digits))]
+    (= hd (control (checksum-2 tl)))))
+
+
 ; measure all impls on this string.
 (def res
   (mapv #(bench % "178937299745")
     '[parse-n-verify-cc?
+      verify-2
       parse-n-verify-cc-hinted?]))
 (pp/print-table res)
 
-
 (defn -main []
-  (res ))
+  (println (parse-n-verify-cc-int-method? "178937299745")))
+  ;; (res ))
