@@ -27,13 +27,17 @@ def reduce(f, xs, init=None):
     >>> reduce(mirror, ['foo', 'bar'], {})
     {'foo': 'foo', 'bar': 'bar'}
     """
-    if not xs:
+    if len(xs) == 0:
         return init
 
-    if init is None:
-        return reduce(f, xs[1:], xs[0])
+    if init == None:
+        init = xs[0]
+        xs = xs[1:]
 
-    return f(reduce(f, xs[:-1], init), xs[-1])
+    acc = init
+    for x in xs:
+        acc = f(acc, x)
+    return acc
 
 
 def product(nums):
@@ -57,20 +61,20 @@ def my_map(f, xs):
     >>> my_map(lambda x: x * x, [1, 2, 3, 4])
     [1, 4, 9, 16]
     """
-    return reduce(lambda acc, x: acc+[f(x)], xs, [])
+    return [f(x) for x in xs]
 
 
 def my_filter(f, xs):
     """
-    Given a predicate function f (a function which returns True or False) and a list
-    xs, return a new list with only the items of xs where f(x) is True
+     Given a predicate function f (a function which returns True or False) and a list
+     xs, return a new list with only the items of xs where f(x) is True
 
-    >>> my_filter(lambda x: x > 0, [-1, 3, -2, 5])
-    [3, 5]
-    >>> my_filter(lambda x: False, [1, 2])
-    []
-    """
-    return reduce(lambda acc, x: acc+[x] if f(x) else acc, xs, [])
+     >>> my_filter(lambda x: x > 0, [-1, 3, -2, 5])
+     [3, 5]
+     >>> my_filter(lambda x: False, [1, 2])
+     []
+     """
+    return [x for x in xs if f(x)]
 
 
 def my_zip(*iters):
@@ -81,9 +85,13 @@ def my_zip(*iters):
     >>> my_zip('abc', 'def', (1, 2, 3))
     [['a', 'd', 1], ['b', 'e', 2], ['c', 'f', 3]]
     """
-    init = [[] for i in range(len(iters[0]))]
-    def f(acc, x): return [acc[i]+[elem] for i, elem in enumerate(x)]
-    return reduce(f, iters, init)
+    pairs = []
+    for i in range(len(iters[0])):
+        pair = []
+        for iter in iters:
+            pair.append(iter[i])
+        pairs.append(pair[:])
+    return pairs
 
 
 if __name__ == "__main__":
