@@ -27,11 +27,12 @@ def reduce(f, xs, init=None):
     >>> reduce(mirror, ['foo', 'bar'], {})
     {'foo': 'foo', 'bar': 'bar'}
     """
+
     if not xs:
         return init
 
     if init is None:
-        return reduce(f, xs[1:], xs[0])
+        return reduce(f, xs[:-1], xs[-1])
 
     return f(reduce(f, xs[:-1], init), xs[-1])
 
@@ -57,7 +58,8 @@ def my_map(f, xs):
     >>> my_map(lambda x: x * x, [1, 2, 3, 4])
     [1, 4, 9, 16]
     """
-    return reduce(lambda acc, x: acc+[f(x)], xs, [])
+
+    return reduce(lambda acc, x: acc + [f(x)], xs, [])
 
 
 def my_filter(f, xs):
@@ -70,6 +72,7 @@ def my_filter(f, xs):
     >>> my_filter(lambda x: False, [1, 2])
     []
     """
+
     return reduce(lambda acc, x: acc+[x] if f(x) else acc, xs, [])
 
 
@@ -81,7 +84,7 @@ def my_zip(*iters):
     >>> my_zip('abc', 'def', (1, 2, 3))
     [['a', 'd', 1], ['b', 'e', 2], ['c', 'f', 3]]
     """
-    init = [[] for i in range(len(iters[0]))]
+    init = [[] for _ in range(len(iters[0]))]
     def f(acc, x): return [acc[i]+[elem] for i, elem in enumerate(x)]
     return reduce(f, iters, init)
 
